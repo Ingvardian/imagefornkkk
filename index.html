@@ -5,23 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Фотогалерея по датам</title>
     <style>
+        /* Убираем отступы и прокрутку */
         html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #000;
+            background-color: #000; /* Черный фон для полос по бокам */
         }
 
+        /* Картинка на весь экран без обрезки */
         #gallery-image {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Измените на contain, если не хотите обрезать края */
-            transition: opacity 1s ease-in-out;
+            object-fit: contain; /* Фото сжимается или увеличивается, чтобы влезть целиком */
+            transition: opacity 1s ease-in-out; /* Плавный переход при смене */
             opacity: 1;
         }
 
+        /* Класс для эффекта плавного исчезновения */
         .fade-out {
             opacity: 0 !important;
         }
@@ -33,11 +36,10 @@
 
     <script>
         // --- НАСТРОЙКА ---
-        const MAX_IMAGES_PER_DAY = 20; // Максимальное количество фото, которое скрипт будет искать в папке
+        const MAX_IMAGES_PER_DAY = 50; // Ищет до 50 картинок в папке (можно увеличить)
         const INTERVAL_TIME = 15000;  // Интервал смены картинок (15 секунд)
-        const IMAGE_EXTENSION = 'jpg'; // Расширение ваших картинок (jpg, png или jpeg)
         
-        // Запасная картинка, если папка на сегодня не найдена или пуста
+        // Запасная картинка из интернета, если папка на сегодня пуста или не найдена
         const DEFAULT_IMAGE = "https://picsum.photos"; 
         // ------------------
 
@@ -49,9 +51,9 @@
         function getFormattedDate() {
             const today = new Date();
             const day = String(today.getDate()).padStart(2, '0');
-            const month = String(today.getMonth() + 1).padStart(2, '0'); // Месяцы идут от 0 до 11
+            const month = String(today.getMonth() + 1).padStart(2, '0'); 
             const year = today.getFullYear();
-            return `${day}-${month}-${year}`; // Пример: 29-08-2026
+            return `${day}-${month}-${year}`; // Пример имени папки: 29-08-2026
         }
 
         // 2. Функция проверки существования картинки на сервере
@@ -64,41 +66,53 @@
             });
         }
 
-        // 3. Сканируем папку на наличие картинок от 1 до MAX_IMAGES_PER_DAY
+        // 3. Автоматический поиск картинок в сегодняшней папке
         async function loadImagesForToday() {
-            const folderName = getFormattedDate(); // Получаем имя папки (например, "29-08-2026")
+            const folderName = getFormattedDate(); 
+            // Список расширений, которые скрипт проверит для каждого номера
+            const extensions = ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG']; 
             
             for (let i = 1; i <= MAX_IMAGES_PER_DAY; i++) {
-                const imgUrl = `${folderName}/${i}.${IMAGE_EXTENSION}`;
+                let found = false;
                 
-                // Проверяем, есть ли файл 1.jpg, затем 2.jpg и т.д.
-                const exists = await checkImageExists(imgUrl);
-                if (exists) {
-                    currentImages.push(imgUrl);
-                } else {
-                    // Если файл не найден, останавливаем поиск (считаем, что картинки закончились)
+                // Проверяем все расширения для текущего номера по очереди
+                for (let ext of extensions) {
+                    const imgUrl = `${folderName}/${i}.${ext}`;
+                    const exists = await checkImageExists(imgUrl);
+                    
+                    if (exists) {
+                        currentImages.push(imgUrl);
+                        found = true;
+                        break; // Нашли файл, переходим к следующему номеру (i+1)
+                    }
+                }
+                
+                // Если для номера 'i' не подошло ни одно расширение, значит картинки закончились
+                if (!found) {
                     break;
                 }
             }
 
-            // Если картинок на сегодня нет, используем запасную
+            // Если картинок на сегодня нет вообще, используем запасную
             if (currentImages.length === 0) {
                 currentImages.push(DEFAULT_IMAGE);
             }
 
-            // Запускаем показ первой картинки
+            // Показываем первую картинку сразу
             imgElement.src = currentImages[0];
 
-            // Запускаем цикл смены, если картинок больше одной
+            // Если картинок больше одной, запускаем таймер смены
             if (currentImages.length > 1) {
                 setInterval(changeImage, INTERVAL_TIME);
             }
         }
 
-        // 4. Функция плавной смены картинок
+        // 4. Функция плавного переключения картинок
         function changeImage() {
+            // Запускаем исчезновение (1 секунда)
             imgElement.classList.add('fade-out');
 
+            // Через 1 секунду меняем адрес картинки и проявляем обратно
             setTimeout(() => {
                 currentIndex = (currentIndex + 1) % currentImages.length;
                 imgElement.src = currentImages[currentIndex];
@@ -106,7 +120,7 @@
             }, 1000);
         }
 
-        // Запуск скрипта при загрузке страницы
+        // Запуск основного скрипта
         loadImagesForToday();
     </script>
 </body>
